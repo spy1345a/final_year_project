@@ -1,0 +1,31 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Flutter / Dart
+.build/
+.dart_tool/
+*.lock
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+#Enviroment files
+*.venv
+.env
+
+# Data bases
+*.db
+
+#Flutter app
+my_flutter_app/
