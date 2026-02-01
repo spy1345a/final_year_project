@@ -17,7 +17,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 DB_NAME = os.getenv("DATABASE_NAME", "users.db")
 DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, DB_NAME)}"

@@ -127,4 +127,4 @@ def users_page():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(os.getenv("DEBUG"))
+    app.run()
