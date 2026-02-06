@@ -29,3 +29,9 @@ Thumbs.db
 
 #Flutter app
 my_flutter_app/
+
+#csv files
+*.csv
+
+# Vs code settings
+settings.json
