@@ -1,11 +1,15 @@
-from pathlib import Path
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from loading import Load_Model,Load_Vectorizer
 
-BASE_DIR = Path(__file__).resolve().parent
-csv_path = BASE_DIR / "household_expenses.csv"
+def main():
+    model = Load_Model("model/model.pkl",debug=True)
+    vectorizer=Load_Vectorizer("model/vectorizer.pkl",debug=True)
 
-df = pd.read_csv(csv_path)
+    if model and vectorizer:
+        print("--------ML IS ready to predict---------")
 
-print(df.head())
 
+
+
+
+if __name__ == "__main__":
+    main()
