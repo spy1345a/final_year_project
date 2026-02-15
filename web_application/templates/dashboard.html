@@ -9,6 +9,22 @@
     <p><b>Username:</b> {{ user.username }}</p>
     <p><b>Role:</b> {{ user.role }}</p>
 
+    <hr>
+
+    <h3>Make a Prediction</h3>
+
+    <form method="POST">
+        <input type="text" name="text" placeholder="Enter text here" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if prediction %}
+        <h4>Prediction Result:</h4>
+        <p><b>{{ prediction }}</b></p>
+    {% endif %}
+
+    <hr>
+
     <a href="/users">View Users</a>
     <a href="/logout">Logout</a>    
 </body>

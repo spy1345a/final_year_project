@@ -196,7 +196,11 @@ def get_users(
     ]
 
 #-------------- Prediction call -------------
+class TextInput(BaseModel):
+    text: str
+from ai_intratation.ai_main import predict_text
+
 @app.post("/predict")
-def post_predict():
-    
+def post_predict(data: TextInput):
+    return predict_text(data.text)
 

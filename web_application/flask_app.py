@@ -45,12 +45,13 @@ def login():
     return render_template("login.html")
 
 # ---------------- DASHBOARD ----------------
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     token = session.get("token")
     if not token:
         return redirect(url_for("login"))
 
+    # Get user profile
     response = requests.get(
         f"{FASTAPI_URL}/profile",
         headers={"Authorization": f"Bearer {token}"}
@@ -60,8 +61,22 @@ def dashboard():
         return redirect(url_for("login"))
 
     user = response.json()
-    return render_template("dashboard.html", user=user)
 
+    prediction = None
+
+    # If form submitted → call prediction endpoint
+    if request.method == "POST":
+        text = request.form.get("text")
+
+        pred_response = requests.post(
+            f"{FASTAPI_URL}/predict",
+            json={"text": text}
+        )
+
+        if pred_response.status_code == 200:
+            prediction = pred_response.json()["prediction"]
+
+    return render_template("dashboard.html", user=user, prediction=prediction)
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
