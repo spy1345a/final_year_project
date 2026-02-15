@@ -1,3 +1,4 @@
+from numpy import vectorize
 from loading import Load_Model,Load_Vectorizer
 
 def main():
@@ -6,10 +7,14 @@ def main():
 
     if model and vectorizer:
         print("--------ML IS ready to predict---------")
+    
 
+    text = "Enter Test text here"
 
+    X = vectorizer.transform([text])
+    prediction = model.predict(X)
 
-
-
+    print("Input:", text)
+    print("Prediction:", prediction[0])
 if __name__ == "__main__":
     main()

@@ -195,5 +195,8 @@ def get_users(
         for u in users
     ]
 
-
+#-------------- Prediction call -------------
+@app.post("/predict")
+def post_predict():
+    
 
