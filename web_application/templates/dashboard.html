@@ -4,28 +4,54 @@
     <title>Dashboard</title>
 </head>
 <body>
-    <h2>Dashboard</h2>
 
-    <p><b>Username:</b> {{ user.username }}</p>
-    <p><b>Role:</b> {{ user.role }}</p>
+<h2>Dashboard</h2>
 
-    <hr>
+<p><b>Username:</b> {{ user.username }}</p>
+<p><b>Role:</b> {{ user.role }}</p>
 
-    <h3>Make a Prediction</h3>
+<hr>
 
-    <form method="POST">
-        <input type="text" name="text" placeholder="Enter text here" required>
-        <button type="submit">Predict</button>
-    </form>
+<h3>Add Expense (AI Assisted)</h3>
 
-    {% if prediction %}
-        <h4>Prediction Result:</h4>
-        <p><b>{{ prediction }}</b></p>
-    {% endif %}
+<!-- STEP 1: Predict -->
+<form method="POST">
+    <input type="text" name="text" placeholder="Expense description" required>
+    <input type="number" name="amount" placeholder="Amount ₹" required>
 
-    <hr>
+    <button name="action" value="predict" type="submit">
+        Predict Category
+    </button>
+</form>
 
-    <a href="/users">View Users</a>
-    <a href="/logout">Logout</a>    
+{% if prediction %}
+<hr>
+
+<h4>Prediction Result</h4>
+
+<p>Description: <b>{{ cleaned_text }}</b></p>
+<p>Predicted Category: <b>{{ prediction }}</b></p>
+
+<!-- STEP 2: Confirm -->
+<form method="POST">
+
+    <input type="hidden" name="description" value="{{ cleaned_text }}">
+    <input type="hidden" name="amount" value="{{ request.form.amount }}">
+    <input type="hidden" name="category" value="{{ prediction }}">
+
+    <button name="action" value="confirm" type="submit">
+        ✅ Confirm & Save Expense
+    </button>
+
+</form>
+
+{% endif %}
+
+<hr>
+
+<a href="/expenses">View Expenses</a>
+<a href="/users">View Users</a>
+<a href="/logout">Logout</a>
+
 </body>
 </html>

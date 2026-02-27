@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 # ---------------- CONFIG ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,7 +38,18 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="user")
 
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 Base.metadata.create_all(bind=engine)
+
 
 # ---------------- SECURITY ----------------
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -67,6 +79,16 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     username: str
     role: str
+
+class ExpenseCreate(BaseModel):
+    description: str
+    amount: int
+
+class ExpenseResponse(BaseModel):
+    id: int
+    description: str
+    amount: int
+    created_at: datetime
 
 # ---------------- DEPENDENCIES ----------------
 def get_db():
@@ -204,3 +226,80 @@ from ai_intratation.ai_main import predict_text
 def post_predict(data: TextInput):
     return predict_text(data.text)
 
+@app.post("/expenses")
+def add_expense(
+    data: ExpenseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    expense = Expense(
+        description=data.description.strip().lower(),
+        amount=data.amount,
+        user_id=current_user.id
+    )
+
+    db.add(expense)
+    db.commit()
+    db.refresh(expense)
+
+    return {"message": "Expense added"}
+
+@app.get("/expenses/recent")
+def get_recent_expenses(
+    limit: int = 6,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Default returns 6 expenses.
+    Client can request any number using:
+    /expenses/recent?limit=10
+    """
+
+    # ---- safety limit ----
+    limit = max(1, min(limit, 100))  
+    # minimum 1, maximum 100
+
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.user_id == current_user.id)
+        .order_by(Expense.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id": e.id,
+            "description": e.description,
+            "amount": e.amount,
+            "created_at": e.created_at
+        }
+        for e in expenses
+    ]
+
+# -------- DELETE EXPENSE ----------
+@app.delete("/expenses/{expense_id}")
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    expense = (
+        db.query(Expense)
+        .filter(
+            Expense.id == expense_id,
+            Expense.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    db.delete(expense)
+    db.commit()
+
+    return {"message": "Expense removed"}

@@ -76,11 +76,12 @@ def login():
 # ---------------- DASHBOARD ----------------
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
+
     token = session.get("token")
     if not token:
         return redirect(url_for("login"))
 
-    # Get user profile from FastAPI
+    # get profile
     response = requests.get(
         f"{FASTAPI_URL}/profile",
         headers={"Authorization": f"Bearer {token}"}
@@ -90,34 +91,54 @@ def dashboard():
         return redirect(url_for("login"))
 
     user = response.json()
-    prediction = None
 
-    # -------- POST: Prediction --------
+    prediction = None
+    cleaned_text = None
+
+    # ---------- FORM ACTION ----------
     if request.method == "POST":
 
-        raw_text = request.form.get("text", "")
+        action = request.form.get("action")
 
-        # normalize input
-        cleaned_text = normalize_text(raw_text)
+        # ---------- STEP 1: PREDICT ----------
+        if action == "predict":
 
-        # avoid empty submissions
-        if cleaned_text:
+            raw_text = request.form.get("text", "")
+            cleaned_text = normalize_text(raw_text)
 
-            pred_response = requests.post(
-                f"{FASTAPI_URL}/predict",
-                json={"text": cleaned_text},
+            if cleaned_text:
+                pred_response = requests.post(
+                    f"{FASTAPI_URL}/predict",
+                    json={"text": cleaned_text},
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+
+                if pred_response.status_code == 200:
+                    prediction = pred_response.json().get("prediction")
+
+        # ---------- STEP 2: CONFIRM SAVE ----------
+        elif action == "confirm":
+
+            description = request.form.get("description")
+            amount = request.form.get("amount")
+
+            requests.post(
+                f"{FASTAPI_URL}/expenses",
+                json={
+                    "description": description,
+                    "amount": int(amount)
+                },
                 headers={"Authorization": f"Bearer {token}"}
             )
 
-            if pred_response.status_code == 200:
-                prediction = pred_response.json().get("prediction")
+            return redirect(url_for("expenses_page"))
 
     return render_template(
         "dashboard.html",
         user=user,
-        prediction=prediction
+        prediction=prediction,
+        cleaned_text=cleaned_text
     )
-
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -180,6 +201,43 @@ def users_page():
     users = response.json()
     return render_template("users.html", users=users)
 
+# ------------ EXPENSES PAGE ---------------
+@app.route("/expenses")
+def expenses_page():
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
+
+    # get recent expenses from FastAPI
+    response = requests.get(
+        f"{FASTAPI_URL}/expenses/recent?limit=6",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    if response.status_code != 200:
+        return render_template(
+            "error.html",
+            message="Could not load expenses."
+        )
+
+    expenses = response.json()
+
+    return render_template("expenses.html", expenses=expenses)
+
+# ------------ DELETE EXPENSE ---------------
+@app.route("/expenses/delete/<int:expense_id>", methods=["POST"])
+def delete_expense(expense_id):
+
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
+
+    requests.delete(
+        f"{FASTAPI_URL}/expenses/{expense_id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    return redirect(url_for("expenses_page"))
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
