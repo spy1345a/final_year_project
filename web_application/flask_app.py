@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import requests
 import os
 from dotenv import load_dotenv
+from spellchecker import SpellChecker
+import re
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,6 +15,33 @@ app = Flask(__name__)
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 FASTAPI_URL = os.getenv("FASTAPI_URL")
+
+
+#------------ PROSSING ---------------
+spell = SpellChecker()
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+
+    # trim spaces
+    text = text.strip()
+
+    # lowercase
+    text = text.lower()
+
+    # remove weird characters
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+
+    # remove extra spaces
+    text = re.sub(r"\s+", " ", text)
+
+    # spelling correction
+    corrected_words = []
+    for word in text.split():
+        corrected_words.append(spell.correction(word) or word)
+
+    return " ".join(corrected_words)
+
 
 # ---------------- HOME ----------------
 @app.route("/")
@@ -51,7 +80,7 @@ def dashboard():
     if not token:
         return redirect(url_for("login"))
 
-    # Get user profile
+    # Get user profile from FastAPI
     response = requests.get(
         f"{FASTAPI_URL}/profile",
         headers={"Authorization": f"Bearer {token}"}
@@ -61,22 +90,34 @@ def dashboard():
         return redirect(url_for("login"))
 
     user = response.json()
-
     prediction = None
 
-    # If form submitted → call prediction endpoint
+    # -------- POST: Prediction --------
     if request.method == "POST":
-        text = request.form.get("text")
 
-        pred_response = requests.post(
-            f"{FASTAPI_URL}/predict",
-            json={"text": text}
-        )
+        raw_text = request.form.get("text", "")
 
-        if pred_response.status_code == 200:
-            prediction = pred_response.json()["prediction"]
+        # normalize input
+        cleaned_text = normalize_text(raw_text)
 
-    return render_template("dashboard.html", user=user, prediction=prediction)
+        # avoid empty submissions
+        if cleaned_text:
+
+            pred_response = requests.post(
+                f"{FASTAPI_URL}/predict",
+                json={"text": cleaned_text},
+                headers={"Authorization": f"Bearer {token}"}
+            )
+
+            if pred_response.status_code == 200:
+                prediction = pred_response.json().get("prediction")
+
+    return render_template(
+        "dashboard.html",
+        user=user,
+        prediction=prediction
+    )
+
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
