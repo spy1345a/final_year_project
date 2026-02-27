@@ -62,7 +62,10 @@
         <td>{{ expense.id }}</td>
         <td>{{ expense.description }}</td>
         <td>₹ {{ expense.amount }}</td>
-        <td>{{ expense.created_at }}</td>
+        <td>
+    {{ expense.created_at.split('T')[0] }}
+    {{ expense.created_at.split('T')[1][:5] }}
+        </td>
 
         <td>
             <form action="/expenses/delete/{{ expense.id }}" method="POST">

@@ -74,6 +74,7 @@ def login():
     return render_template("login.html")
 
 # ---------------- DASHBOARD ----------------
+# ---------------- DASHBOARD ----------------
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
 
@@ -81,7 +82,7 @@ def dashboard():
     if not token:
         return redirect(url_for("login"))
 
-    # get profile
+    # Get user profile
     response = requests.get(
         f"{FASTAPI_URL}/profile",
         headers={"Authorization": f"Bearer {token}"}
@@ -94,6 +95,18 @@ def dashboard():
 
     prediction = None
     cleaned_text = None
+
+    # -------- CATEGORY LIST --------
+    categories = [
+        "Food",
+        "Transport",
+        "Health",
+        "Shopping",
+        "Subscriptions",
+        "Entertainment/Games",
+        "Bill",
+        "Miscellaneous/Other"
+    ]
 
     # ---------- FORM ACTION ----------
     if request.method == "POST":
@@ -121,12 +134,14 @@ def dashboard():
 
             description = request.form.get("description")
             amount = request.form.get("amount")
+            category = request.form.get("category")
 
             requests.post(
                 f"{FASTAPI_URL}/expenses",
                 json={
                     "description": description,
-                    "amount": int(amount)
+                    "amount": int(amount),
+                    "category": category
                 },
                 headers={"Authorization": f"Bearer {token}"}
             )
@@ -137,8 +152,10 @@ def dashboard():
         "dashboard.html",
         user=user,
         prediction=prediction,
-        cleaned_text=cleaned_text
+        cleaned_text=cleaned_text,
+        categories=categories
     )
+
 # ---------------- SIGNUP ----------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():

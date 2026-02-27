@@ -30,14 +30,29 @@
 <h4>Prediction Result</h4>
 
 <p>Description: <b>{{ cleaned_text }}</b></p>
-<p>Predicted Category: <b>{{ prediction }}</b></p>
 
-<!-- STEP 2: Confirm -->
 <form method="POST">
 
     <input type="hidden" name="description" value="{{ cleaned_text }}">
     <input type="hidden" name="amount" value="{{ request.form.amount }}">
-    <input type="hidden" name="category" value="{{ prediction }}">
+
+    <!-- CATEGORY DROPDOWN -->
+    <label><b>Select Category:</b></label>
+    <select name="category" required>
+
+        {% for category in categories %}
+            <option value="{{ category }}"
+                {% if category == prediction %}
+                    selected
+                {% endif %}
+            >
+                {{ category }}
+            </option>
+        {% endfor %}
+
+    </select>
+
+    <br><br>
 
     <button name="action" value="confirm" type="submit">
         ✅ Confirm & Save Expense
