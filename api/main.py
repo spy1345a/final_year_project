@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import csv
+import io
 
 # ---------------- CONFIG ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,9 +47,10 @@ class Expense(Base):
     description = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
 
+    category = Column(String, default="Miscellaneous")
+
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-
 Base.metadata.create_all(bind=engine)
 
 
@@ -247,19 +250,18 @@ def add_expense(
 
 @app.get("/expenses/recent")
 def get_recent_expenses(
-    limit: int = 6,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Default returns 6 expenses.
-    Client can request any number using:
+    Returns recent expenses.
+    Client can request:
     /expenses/recent?limit=10
     """
 
     # ---- safety limit ----
-    limit = max(1, min(limit, 100))  
-    # minimum 1, maximum 100
+    limit = max(1, min(limit, 1000))
 
     expenses = (
         db.query(Expense)
@@ -274,7 +276,8 @@ def get_recent_expenses(
             "id": e.id,
             "description": e.description,
             "amount": e.amount,
-            "created_at": e.created_at
+            "category": e.category,
+            "created_at": e.created_at.isoformat()
         }
         for e in expenses
     ]
@@ -303,3 +306,107 @@ def delete_expense(
     db.commit()
 
     return {"message": "Expense removed"}
+
+# ------------ EXPORT CSV ---------------
+@app.route("/expenses/export")
+def export_expenses():
+
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
+
+    # get ALL expenses
+    response = requests.get(
+        f"{FASTAPI_URL}/expenses/recent?limit=1000",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    if response.status_code != 200:
+        return redirect(url_for("expenses_page"))
+
+    expenses = response.json()
+
+    # create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # header
+    writer.writerow(["ID", "Description", "Amount", "Category", "Date"])
+
+    # rows
+    for e in expenses:
+        writer.writerow([
+            e["id"],
+            e["description"],
+            e["amount"],
+            e.get("category", ""),
+            e["created_at"]
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=expenses.csv"
+        },
+    )
+
+# -------- IMPORT EXPENSES FROM CSV ----------
+@app.post("/expenses/import")
+async def import_expenses(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    # check extension
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files allowed")
+
+    # read file
+    content = await file.read()
+    decoded = content.decode("utf-8-sig")   # handles Excel CSV
+
+    reader = csv.DictReader(io.StringIO(decoded))
+
+    imported_count = 0
+    skipped_rows = 0
+
+    for row in reader:
+        try:
+            # remove header spaces + normalize keys
+            row = {k.strip(): v.strip() if v else "" for k, v in row.items()}
+
+            description = row.get("Description")
+            amount = row.get("Amount")
+            category = row.get("Category") or "Miscellaneous"
+
+            # validate required fields
+            if not description or not amount:
+                skipped_rows += 1
+                continue
+
+            expense = Expense(
+                description=description.lower(),
+                amount=int(float(amount)),  # handles 120.00 also
+                category=category,
+                user_id=current_user.id,
+                created_at=datetime.utcnow()
+            )
+
+            db.add(expense)
+            imported_count += 1
+
+        except Exception as e:
+            print("CSV IMPORT ERROR:", e)
+            skipped_rows += 1
+
+    db.commit()
+
+    return {
+        "message": "CSV import completed",
+        "imported_rows": imported_count,
+        "skipped_rows": skipped_rows
+    }

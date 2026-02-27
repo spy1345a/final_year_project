@@ -219,27 +219,46 @@ def users_page():
     return render_template("users.html", users=users)
 
 # ------------ EXPENSES PAGE ---------------
+from collections import defaultdict
+
 @app.route("/expenses")
 def expenses_page():
+
     token = session.get("token")
     if not token:
         return redirect(url_for("login"))
 
-    # get recent expenses from FastAPI
     response = requests.get(
-        f"{FASTAPI_URL}/expenses/recent?limit=6",
+        f"{FASTAPI_URL}/expenses/recent?limit=1000",
         headers={"Authorization": f"Bearer {token}"}
     )
 
     if response.status_code != 200:
-        return render_template(
-            "error.html",
-            message="Could not load expenses."
-        )
+        return render_template("error.html")
 
     expenses = response.json()
 
-    return render_template("expenses.html", expenses=expenses)
+    # ---- build chart data ----
+    category_totals = defaultdict(int)
+
+    for e in expenses:
+        category = e.get("category", "Miscellaneous")
+        amount = int(e.get("amount", 0))
+        category_totals[category] += amount
+
+    chart_labels = list(category_totals.keys())
+    chart_values = list(category_totals.values())
+
+    # ⭐ total for donut center
+    total_amount = sum(chart_values)
+
+    return render_template(
+        "expenses.html",
+        expenses=expenses,
+        chart_labels=chart_labels,
+        chart_values=chart_values,
+        total_amount=total_amount   # ✅ IMPORTANT FIX
+    )
 
 # ------------ DELETE EXPENSE ---------------
 @app.route("/expenses/delete/<int:expense_id>", methods=["POST"])
@@ -256,6 +275,89 @@ def delete_expense(expense_id):
 
     return redirect(url_for("expenses_page"))
 
-# ---------------- RUN ----------------
+@app.route("/expenses/export")
+def export_expenses():
+    import csv
+    from io import StringIO
+    from flask import Response
+
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
+
+    # Get expenses from FastAPI
+    response = requests.get(
+        f"{FASTAPI_URL}/expenses/recent?limit=1000",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    if response.status_code != 200:
+        return redirect(url_for("expenses_page"))
+
+    expenses = response.json()
+
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # CSV Header
+    writer.writerow([
+        "ID",
+        "Description",
+        "Amount",
+        "Category",
+        "Date"
+    ])
+
+    # CSV Rows
+    for e in expenses:
+        writer.writerow([
+            e["id"],
+            e["description"],
+            e["amount"],
+            e.get("category", ""),
+            e["created_at"]
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=expenses.csv"
+        },
+    )
+
+# -------- IMPORT CSV (Flask → FastAPI) ----------
+@app.route("/expenses/import", methods=["POST"])
+def import_expenses():
+
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
+
+    uploaded_file = request.files.get("file")
+
+    if not uploaded_file:
+        return redirect(url_for("expenses_page"))
+
+    # send file to FastAPI
+    files = {
+        "file": (
+            uploaded_file.filename,
+            uploaded_file.stream,
+            "text/csv"
+        )
+    }
+
+    requests.post(
+        f"{FASTAPI_URL}/expenses/import",
+        files=files,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    return redirect(url_for("expenses_page"))
+
 if __name__ == "__main__":
     app.run()

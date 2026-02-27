@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>Expenses</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: Arial;
@@ -30,21 +34,51 @@
             background: #f2f2f2;
         }
 
-        h1 {
-            margin-bottom: 20px;
+        button {
+            padding: 6px 10px;
+            cursor: pointer;
         }
 
-        a {
-            text-decoration: none;
-            color: blue;
+        .chart-container {
+            width: 500px;
+            margin-bottom: 40px;
         }
     </style>
 </head>
+
 <body>
 
 <h1>Recent Expenses</h1>
 
 <a href="/dashboard">⬅ Back to Dashboard</a>
+
+<br><br>
+
+<a href="/expenses/export">
+    <button>⬇ Export as CSV</button>
+</a>
+
+<br><br>
+
+<h3>Import Expenses (CSV)</h3>
+
+<form action="/expenses/import"
+      method="POST"
+      enctype="multipart/form-data">
+
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">⬆ Import CSV</button>
+
+</form>
+
+<br><br>
+
+<!-- 🍩 DONUT CHART -->
+<h2>Expense Category Breakdown</h2>
+
+<div class="chart-container">
+    <canvas id="expenseChart"></canvas>
+</div>
 
 <br><br>
 
@@ -62,9 +96,10 @@
         <td>{{ expense.id }}</td>
         <td>{{ expense.description }}</td>
         <td>₹ {{ expense.amount }}</td>
+
         <td>
-    {{ expense.created_at.split('T')[0] }}
-    {{ expense.created_at.split('T')[1][:5] }}
+            {{ expense.created_at.split('T')[0] }}
+            {{ expense.created_at.split('T')[1][:5] }}
         </td>
 
         <td>
@@ -73,11 +108,83 @@
                         onclick="return confirm('Delete this expense?')">
                     ❌ Remove
                 </button>
-    </form>
-</td>
+            </form>
+        </td>
     </tr>
     {% endfor %}
 </table>
+
+<!-- DONUT CHART SCRIPT -->
+<script>
+
+const labels = {{ chart_labels | tojson }};
+const values = {{ chart_values | tojson }};
+const totalAmount = {{ total_amount }};
+
+const colors = [
+    "#FF6384",
+    "#36A2EB",
+    "#FFCE56",
+    "#4BC0C0",
+    "#9966FF",
+    "#FF9F40",
+    "#2ecc71"
+];
+
+const centerTextPlugin = {
+    id: "centerText",
+
+    afterDraw(chart) {
+        const { ctx } = chart;
+
+        ctx.save();
+
+        ctx.font = "bold 22px Arial";
+        ctx.fillStyle = "#333";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const centerX = chart.getDatasetMeta(0).data[0].x;
+        const centerY = chart.getDatasetMeta(0).data[0].y;
+
+        ctx.fillText("Total", centerX, centerY - 15);
+
+        ctx.font = "bold 26px Arial";
+        ctx.fillStyle = "#000";
+
+        ctx.fillText("₹ " + totalAmount.toLocaleString(), centerX, centerY + 15);
+
+        ctx.restore();
+    }
+};
+
+const ctx = document.getElementById("expenseChart");
+
+new Chart(ctx, {
+    type: "doughnut",
+
+    data: {
+        labels: labels,
+        datasets: [{
+            data: values,
+            backgroundColor: colors,
+            hoverOffset: 30
+        }]
+    },
+
+    options: {
+        cutout: "65%",
+        plugins: {
+            legend: {
+                position: "right"
+            }
+        }
+    },
+
+    plugins: [centerTextPlugin]
+});
+
+</script>
 
 </body>
 </html>
