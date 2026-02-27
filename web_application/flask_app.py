@@ -359,5 +359,24 @@ def import_expenses():
 
     return redirect(url_for("expenses_page"))
 
+
+# -------- DELETE ALL EXPENSES ----------
+@app.route("/expenses/delete-all", methods=["POST"])
+def delete_all_expenses():
+
+    current_user = get_current_user()
+
+    deleted = (
+        db.session.query(Expense)
+        .filter(
+            Expense.user_id == current_user.id
+        )
+        .delete(synchronize_session=False)
+    )
+
+    db.session.commit()
+
+    return redirect("/expenses")
+
 if __name__ == "__main__":
     app.run()

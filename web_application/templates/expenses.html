@@ -39,6 +39,12 @@
             cursor: pointer;
         }
 
+        .danger {
+            background: #c0392b;
+            color: white;
+            border: none;
+        }
+
         .chart-container {
             width: 500px;
             margin-bottom: 40px;
@@ -68,7 +74,16 @@
 
     <input type="file" name="file" accept=".csv" required>
     <button type="submit">⬆ Import CSV</button>
+</form>
 
+<br><br>
+
+<!-- ✅ DELETE ALL EXPENSES BUTTON -->
+<form action="/expenses/delete-all" method="POST">
+    <button class="danger"
+        onclick="return confirm('Delete ALL expenses? This cannot be undone!')">
+        🗑 Delete All Expenses
+    </button>
 </form>
 
 <br><br>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File , Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
@@ -24,6 +24,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 DB_NAME = os.getenv("DATABASE_NAME", "users.db")
 DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, DB_NAME)}"
+
+ADMIN_IMPORT_KEY = os.getenv("ADMIN_IMPORT_KEY")
 
 # ---------------- DATABASE ----------------
 engine = create_engine(
@@ -410,3 +412,72 @@ async def import_expenses(
         "imported_rows": imported_count,
         "skipped_rows": skipped_rows
     }
+
+@app.post("/expenses/import-default")
+async def import_default_expenses(
+    file: UploadFile = File(...),
+    admin_key: str = Header(None),
+    db: Session = Depends(get_db),
+):
+
+    # ---- SECURITY CHECK ----
+    if admin_key != ADMIN_IMPORT_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    content = await file.read()
+    decoded = content.decode("utf-8-sig")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+
+    users = db.query(User).all()
+
+    imported = 0
+
+    for row in reader:
+
+        row = {k.strip(): v.strip() for k, v in row.items()}
+
+        description = row.get("Description")
+        amount = row.get("Amount")
+        category = row.get("Category") or "Miscellaneous"
+
+        if not description or not amount:
+            continue
+
+        # ⭐ add expense to EVERY USER
+        for user in users:
+            expense = Expense(
+                description=description.lower(),
+                amount=int(float(amount)),
+                category=category,
+                user_id=user.id,
+                created_at=datetime.utcnow()
+            )
+
+            db.add(expense)
+            imported += 1
+
+    db.commit()
+
+    return {
+        "message": "Default expenses added to all users",
+        "inserted_records": imported
+    }
+
+
+# -------- DELETE EXPENSE TABLE ----------
+@app.delete("/expenses/delete-all")
+def delete_all_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    deleted = (
+        db.query(Expense)
+        .filter(Expense.user_id == current_user.id)
+        .delete()
+    )
+
+    db.commit()
+
+    return {"message": f"{deleted} expenses deleted"}
+
