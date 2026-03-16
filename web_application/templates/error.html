@@ -1,8 +1,23 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>Error - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
 <body>
-  <h2>Error</h2>
-  <p>{{ message }}</p>
-  <a href="/dashboard">Back</a>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">Expense Tracker</a>
+        <div class="navbar-menu">
+            <a href="/login">Login</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="text-align: center;">
+            <div class="card-header">Error</div>
+            <p>{{ message }}</p>
+            <a href="/dashboard" class="btn btn-primary" style="margin-top: 1rem;">Back to Dashboard</a>
+        </div>
+    </div>
 </body>
 </html>

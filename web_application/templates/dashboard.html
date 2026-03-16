@@ -1,72 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>Dashboard - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">Expense Tracker</a>
+        <div class="navbar-menu">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/expenses">Expenses</a>
+            {% if user.role == 'admin' %}
+            <a href="/users">Users</a>
+            {% endif %}
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Welcome, {{ user.username }}</h1>
+            <span class="category-tag" style="background: var(--light); color: var(--dark);">{{ user.role }}</span>
+        </div>
 
-<h2>Dashboard</h2>
+        <div class="card">
+            <div class="card-header">Add Expense (AI Assisted)</div>
+            
+            <form method="POST">
+                <div class="dashboard-grid">
+                    <div class="form-group">
+                        <label>Expense Description</label>
+                        <input type="text" name="text" placeholder="e.g., Lunch at restaurant" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" name="amount" placeholder="Enter amount" required>
+                    </div>
+                </div>
+                <button name="action" value="predict" type="submit" class="btn btn-secondary">
+                    🤖 Predict Category
+                </button>
+            </form>
 
-<p><b>Username:</b> {{ user.username }}</p>
-<p><b>Role:</b> {{ user.role }}</p>
+            {% if prediction %}
+            <hr style="margin: 2rem 0;">
+            
+            <div class="card" style="background: #f8f9fa;">
+                <div class="card-header">Prediction Result</div>
+                <p><strong>Description:</strong> {{ cleaned_text }}</p>
+                <p><strong>Predicted Category:</strong> <span class="category-tag category-{{ prediction }}">{{ prediction }}</span></p>
 
-<hr>
+                <form method="POST" style="margin-top: 1rem;">
+                    <input type="hidden" name="description" value="{{ cleaned_text }}">
+                    <input type="hidden" name="amount" value="{{ request.form.amount }}">
 
-<h3>Add Expense (AI Assisted)</h3>
+                    <div class="form-group">
+                        <label><strong>Select Category:</strong></label>
+                        <select name="category" required>
+                            {% for category in categories %}
+                                <option value="{{ category }}" {% if category == prediction %}selected{% endif %}>
+                                    {{ category }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-<!-- STEP 1: Predict -->
-<form method="POST">
-    <input type="text" name="text" placeholder="Expense description" required>
-    <input type="number" name="amount" placeholder="Amount ₹" required>
+                    <button name="action" value="confirm" type="submit" class="btn btn-primary">
+                        ✅ Confirm & Save Expense
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
 
-    <button name="action" value="predict" type="submit">
-        Predict Category
-    </button>
-</form>
-
-{% if prediction %}
-<hr>
-
-<h4>Prediction Result</h4>
-
-<p>Description: <b>{{ cleaned_text }}</b></p>
-
-<form method="POST">
-
-    <input type="hidden" name="description" value="{{ cleaned_text }}">
-    <input type="hidden" name="amount" value="{{ request.form.amount }}">
-
-    <!-- CATEGORY DROPDOWN -->
-    <label><b>Select Category:</b></label>
-    <select name="category" required>
-
-        {% for category in categories %}
-            <option value="{{ category }}"
-                {% if category == prediction %}
-                    selected
-                {% endif %}
-            >
-                {{ category }}
-            </option>
-        {% endfor %}
-
-    </select>
-
-    <br><br>
-
-    <button name="action" value="confirm" type="submit">
-        ✅ Confirm & Save Expense
-    </button>
-
-</form>
-
-{% endif %}
-
-<hr>
-
-<a href="/expenses">View Expenses</a>
-<a href="/users">View Users</a>
-<a href="/logout">Logout</a>
-
+        <div class="actions">
+            <a href="/expenses" class="btn btn-primary">View Expenses</a>
+            <a href="/logout" class="btn btn-danger">Logout</a>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,12 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Home</title>
+    <title>Expense Tracker - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Welcome 🚀</h1>
-    <p>This is the Flask frontend</p>
-
-    <a href="/login">Login</a> | <a href="/signup"Sign Up> </a>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">Expense Tracker</a>
+        <div class="navbar-menu">
+            <a href="/login">Login</a>
+            <a href="/signup">Sign Up</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="card hero">
+            <h1>Track Your Expenses</h1>
+            <p>Manage your finances with ease using our intelligent expense tracking app</p>
+            <div class="hero-buttons">
+                <a href="/login" class="btn btn-primary">Login</a>
+                <a href="/signup" class="btn btn-secondary">Sign Up</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

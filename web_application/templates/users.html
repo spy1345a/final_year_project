@@ -1,28 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Users</title>
+    <title>Users - Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h2>Registered Users</h2>
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">Expense Tracker</a>
+        <div class="navbar-menu">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/expenses">Expenses</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
 
-    <table border="1" cellpadding="8">
-        <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Role</th>
-        </tr>
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Registered Users</h1>
+            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
 
-        {% for user in users %}
-        <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.username }}</td>
-            <td>{{ user.role }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <br>
-    <a href="/dashboard">Back</a>
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td><span class="category-tag" style="background: var(--light);">{{ user.role }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </body>
 </html>

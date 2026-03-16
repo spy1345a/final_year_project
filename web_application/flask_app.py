@@ -11,7 +11,7 @@ ENV_PATH = os.path.join(BASE_DIR, "..", ".env")
 
 load_dotenv(dotenv_path=ENV_PATH)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 FASTAPI_URL = os.getenv("FASTAPI_URL")
