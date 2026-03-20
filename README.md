@@ -158,20 +158,3 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 python web_application/flask_app.py
 ```
 
----
-
-## 📝 License
-
-This project is for educational purposes as part of BCA final year project.
-
----
-
-## 👨‍💻 Author
-
-**Final Year Project** - BCA
-
----
-
-<p align="center">
-  Made with ❤️ for educational purposes
-</p>
