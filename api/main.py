@@ -26,6 +26,8 @@ DB_NAME = os.getenv("DATABASE_NAME", "users.db")
 DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, DB_NAME)}"
 
 ADMIN_IMPORT_KEY = os.getenv("ADMIN_IMPORT_KEY")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 # ---------------- DATABASE ----------------
 engine = create_engine(
@@ -124,7 +126,40 @@ def get_current_user(
 # ---------------- APP ----------------
 app = FastAPI(title="Auth API")
 
-# ---------------- SIGNUP ----------------
+# ---------------- STARTUP: CREATE DEFAULT ADMIN ----------
+@app.on_event("startup")
+def on_startup():
+    global engine, SessionLocal
+    db_path = os.path.join(BASE_DIR, DB_NAME)
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        print(f"Deleted existing database: {db_path}")
+    
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(bind=engine)
+    
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created")
+    
+    db = SessionLocal()
+    try:
+        if ADMIN_USERNAME and ADMIN_PASSWORD:
+            existing_admin = db.query(User).filter(User.username == ADMIN_USERNAME).first()
+            if not existing_admin:
+                admin_user = User(
+                    username=ADMIN_USERNAME,
+                    hashed_password=hash_password(ADMIN_PASSWORD),
+                    role="admin"
+                )
+                db.add(admin_user)
+                db.commit()
+                print(f"Default admin user '{ADMIN_USERNAME}' created")
+            else:
+                print(f"Admin user '{ADMIN_USERNAME}' already exists")
+        else:
+            print("ADMIN_USERNAME or ADMIN_PASSWORD not set in .env")
+    finally:
+        db.close()
 @app.post("/signup")
 def signup(data: SignupRequest, db: Session = Depends(get_db)):
     validate_password(data.password)
@@ -283,6 +318,21 @@ def get_recent_expenses(
         }
         for e in expenses
     ]
+
+# -------- DELETE ALL EXPENSES (ALL USERS) ----------
+@app.delete("/expenses/delete-all")
+def delete_all_expenses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    deleted = db.query(Expense).delete()
+    db.commit()
+
+    return {"message": f"{deleted} expenses deleted from all users"}
+
 
 # -------- DELETE EXPENSE ----------
 @app.delete("/expenses/{expense_id}")
@@ -463,21 +513,4 @@ async def import_default_expenses(
         "message": "Default expenses added to all users",
         "inserted_records": imported
     }
-
-
-# -------- DELETE EXPENSE TABLE ----------
-@app.delete("/expenses/delete-all")
-def delete_all_expenses(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    deleted = (
-        db.query(Expense)
-        .filter(Expense.user_id == current_user.id)
-        .delete()
-    )
-
-    db.commit()
-
-    return {"message": f"{deleted} expenses deleted"}
 

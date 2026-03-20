@@ -364,17 +364,14 @@ def import_expenses():
 @app.route("/expenses/delete-all", methods=["POST"])
 def delete_all_expenses():
 
-    current_user = get_current_user()
+    token = session.get("token")
+    if not token:
+        return redirect(url_for("login"))
 
-    deleted = (
-        db.session.query(Expense)
-        .filter(
-            Expense.user_id == current_user.id
-        )
-        .delete(synchronize_session=False)
+    requests.delete(
+        f"{FASTAPI_URL}/expenses/delete-all",
+        headers={"Authorization": f"Bearer {token}"}
     )
-
-    db.session.commit()
 
     return redirect("/expenses")
 
