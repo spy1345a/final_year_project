@@ -27,6 +27,9 @@ def get_venv_pip():
 def check_venv():
     return os.path.exists(get_venv_python())
 
+def is_running_in_venv():
+    return sys.prefix != sys.base_prefix
+
 def create_venv():
     print("[SETUP] Creating virtual environment...")
     python = get_system_python()
@@ -35,7 +38,6 @@ def create_venv():
 
 def install_dependencies():
     print("[SETUP] Installing dependencies...")
-    pip = get_venv_pip()
     subprocess.run([get_venv_python(), "-m", "pip", "install", "--upgrade", "pip"], check=False)
     subprocess.run([get_venv_python(), "-m", "pip", "install", "-r", REQUIREMENTS_FILE], check=True)
     print("[SETUP] Dependencies installed")
@@ -51,13 +53,22 @@ def setup_env():
     else:
         print("[SETUP] .env file already exists")
 
-def setup():
-    setup_env()
+def run_in_venv():
+    if is_running_in_venv():
+        return
+    
+    venv_python = get_venv_python()
     if not check_venv():
         create_venv()
         install_dependencies()
-    else:
-        print("[SETUP] Using existing virtual environment")
+    
+    print("[INFO] Re-running script in virtual environment...")
+    os.execv(venv_python, [venv_python] + sys.argv)
+
+def setup():
+    run_in_venv()
+    setup_env()
+    print("[SETUP] Using virtual environment:", VENV_DIR)
     print()
 
 def start_api():
