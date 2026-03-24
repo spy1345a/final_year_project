@@ -194,16 +194,23 @@ tr:hover {
     border-radius: 20px;
     font-size: 0.875rem;
     font-weight: 500;
+    border: 1px solid transparent;
 }
 
-.category-Food { background: #ffeaa7; color: #d68910; }
-.category-Transport { background: #aed6f1; color: #2874a6; }
-.category-Health { background: #abebc6; color: #1e8449; }
-.category-Shopping { background: #f5b7b1; color: #cb4335; }
-.category-Subscriptions { background: #d7bde2; color: #7d3c98; }
-.category-Entertainment/Games { background: #fad7a0; color: #b9770e; }
-.category-Bill { background: #edbb99; color: #935116; }
-.category-Miscellaneous/Other { background: #d5dbdb; color: #515a5a; }
+.category-Food, .category-food { background: #ffeaa7; color: #d68910; border-color: #d68910; }
+.category-Transport, .category-transport { background: #aed6f1; color: #2874a6; border-color: #2874a6; }
+.category-Health, .category-health { background: #abebc6; color: #1e8449; border-color: #1e8449; }
+.category-Shopping, .category-shopping { background: #f5b7b1; color: #cb4335; border-color: #cb4335; }
+.category-Subscriptions, .category-subscriptions { background: #d7bde2; color: #7d3c98; border-color: #7d3c98; }
+.category-Entertainment, .category-entertainment, .category-Games { background: #fad7a0; color: #b9770e; border-color: #b9770e; }
+.category-Bill, .category-bill { background: #edbb99; color: #935116; border-color: #935116; }
+.category-Miscellaneous, .category-Other, .category-miscellaneous { background: #d5dbdb; color: #515a5a; border-color: #515a5a; }
+
+.category-tag:not([class*="category-"]) {
+    background: #d5dbdb;
+    color: #515a5a;
+    border-color: #515a5a;
+}
 
 .total-card {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);

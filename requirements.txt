@@ -10,7 +10,7 @@ certifi==2026.1.4
 cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.1
-colorama==0.4.6
+colorama==0.4.6; platform_system == "Windows"
 comm==0.2.3
 debugpy==1.8.20
 decorator==5.2.1
@@ -49,11 +49,11 @@ packaging==26.0
 pandas==3.0.0
 parso==0.8.5
 passlib==1.7.4
-pexpect==4.9.0
+pexpect==4.9.0; platform_system != "Windows"
 platformdirs==4.5.1
 prompt_toolkit==3.0.52
 psutil==7.2.2
-ptyprocess==0.7.0
+ptyprocess==0.7.0; platform_system != "Windows"
 pure_eval==0.2.3
 pyasn1==0.6.2
 pycparser==3.0
@@ -88,13 +88,14 @@ tornado==6.5.4
 tqdm==4.67.3
 traitlets==5.14.3
 typer==0.21.1
-typing-inspection==0.4.2
+typing-inspection==0.4.2; platform_system != "Windows"
 typing_extensions==4.15.0
 tzdata==2025.3
 urllib3==2.6.3
 uvicorn==0.40.0
-uvloop==0.22.1
+uvloop==0.22.1; platform_system != "Windows"
 watchfiles==1.1.1
 wcwidth==0.5.3
+openai-whisper==20250625
 websockets==16.0
 Werkzeug==3.1.5

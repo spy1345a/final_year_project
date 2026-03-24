@@ -90,6 +90,7 @@ class UserResponse(BaseModel):
 class ExpenseCreate(BaseModel):
     description: str
     amount: int
+    category: str = "Miscellaneous"
 
 class ExpenseResponse(BaseModel):
     id: int
@@ -276,6 +277,7 @@ def add_expense(
     expense = Expense(
         description=data.description.strip().lower(),
         amount=data.amount,
+        category=data.category,
         user_id=current_user.id
     )
 

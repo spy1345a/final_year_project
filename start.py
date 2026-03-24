@@ -9,11 +9,6 @@ REQUIREMENTS_FILE = os.path.join(SCRIPT_DIR, "requirements.txt")
 ENV_FILE = os.path.join(SCRIPT_DIR, ".env")
 ENV_EXAMPLE_FILE = os.path.join(SCRIPT_DIR, ".env.example")
 
-def get_system_python():
-    if sys.platform == "win32":
-        return "python"
-    return "python3"
-
 def get_venv_python():
     if sys.platform == "win32":
         return os.path.join(VENV_DIR, "Scripts", "python.exe")
@@ -26,19 +21,6 @@ def get_venv_pip():
 
 def check_venv():
     return os.path.exists(get_venv_python())
-
-def create_venv():
-    print("[SETUP] Creating virtual environment...")
-    python = get_system_python()
-    subprocess.run([python, "-m", "venv", VENV_DIR], check=True)
-    print("[SETUP] Virtual environment created")
-
-def install_dependencies():
-    print("[SETUP] Installing dependencies...")
-    pip = get_venv_pip()
-    subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=False)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", REQUIREMENTS_FILE], check=True)
-    print("[SETUP] Dependencies installed")
 
 def setup_env():
     if not os.path.exists(ENV_FILE):
@@ -54,10 +36,9 @@ def setup_env():
 def setup():
     setup_env()
     if not check_venv():
-        create_venv()
-        install_dependencies()
+        print("[SETUP] WARNING: .venv not found!")
     else:
-        print("[SETUP] Virtual environment already exists")
+        print("[SETUP] Using existing virtual environment")
     print()
 
 def start_api():

@@ -30,7 +30,13 @@
                 <div class="dashboard-grid">
                     <div class="form-group">
                         <label>Expense Description</label>
-                        <input type="text" name="text" placeholder="e.g., Lunch at restaurant" required>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="expense-text" name="text" placeholder="e.g., Lunch at restaurant" required style="flex: 1;">
+                            <button type="button" id="mic-btn" class="btn" style="padding: 10px 15px;" title="Click to speak">
+                                <span id="mic-icon">🎤</span>
+                            </button>
+                        </div>
+                        <small id="mic-status" style="color: #666; display: none;">Listening...</small>
                     </div>
                     <div class="form-group">
                         <label>Amount (₹)</label>
@@ -48,7 +54,7 @@
             <div class="card" style="background: #f8f9fa;">
                 <div class="card-header">Prediction Result</div>
                 <p><strong>Description:</strong> {{ cleaned_text }}</p>
-                <p><strong>Predicted Category:</strong> <span class="category-tag category-{{ prediction }}">{{ prediction }}</span></p>
+                <p><strong>Predicted Category:</strong> <span class="category-tag category-{{ prediction.lower().strip() }}">{{ prediction.strip() }}</span></p>
 
                 <form method="POST" style="margin-top: 1rem;">
                     <input type="hidden" name="description" value="{{ cleaned_text }}">
@@ -58,9 +64,7 @@
                         <label><strong>Select Category:</strong></label>
                         <select name="category" required>
                             {% for category in categories %}
-                                <option value="{{ category }}" {% if category == prediction %}selected{% endif %}>
-                                    {{ category }}
-                                </option>
+                                <option value="{{ category }}" {% if prediction in category or category in prediction %}selected{% endif %}>{{ category }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -78,5 +82,71 @@
             <a href="/logout" class="btn btn-danger">Logout</a>
         </div>
     </div>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const micIcon = document.getElementById('mic-icon');
+        const micStatus = document.getElementById('mic-status');
+        const textInput = document.getElementById('expense-text');
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        micBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'recording.webm');
+
+                        micStatus.textContent = 'Transcribing...';
+                        micStatus.style.display = 'inline';
+
+                        try {
+                            const response = await fetch('/speech-to-text', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const data = await response.json();
+
+                            if (data.text) {
+                                textInput.value = data.text;
+                            } else if (data.error) {
+                                alert('Error: ' + data.error);
+                            }
+                        } catch (err) {
+                            alert('Failed to transcribe audio');
+                        }
+
+                        micStatus.style.display = 'none';
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micIcon.textContent = '⏹️';
+                    micStatus.textContent = 'Listening...';
+                    micStatus.style.display = 'inline';
+                } catch (err) {
+                    alert('Microphone access denied or not available');
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micIcon.textContent = '🎤';
+            }
+        });
+    </script>
 </body>
 </html>

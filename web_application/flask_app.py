@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import requests
 import os
 from dotenv import load_dotenv
 from spellchecker import SpellChecker
 import re
+import tempfile
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,13 @@ app = Flask(__name__, static_folder='static')
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 FASTAPI_URL = os.getenv("FASTAPI_URL")
+
+try:
+    import whisper
+    whisper_model = whisper.load_model("base")
+except Exception as e:
+    whisper_model = None
+    print(f"Warning: Whisper not loaded: {e}")
 
 
 #------------ PROSSING ---------------
@@ -374,6 +382,40 @@ def delete_all_expenses():
     )
 
     return redirect("/expenses")
+
+# -------- SPEECH TO TEXT ----------
+@app.route("/speech-to-text", methods=["POST"])
+def speech_to_text():
+    if whisper_model is None:
+        return jsonify({"error": "Speech recognition not available"}), 500
+
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+
+    audio_file = request.files["audio"]
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        audio_file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        result = whisper_model.transcribe(
+            tmp_path,
+            language="en",
+            task="translate"
+        )
+
+        transcribed_text = result["text"]
+
+        return jsonify({
+            "text": transcribed_text.strip(),
+            "language": "en"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 if __name__ == "__main__":
     app.run()
