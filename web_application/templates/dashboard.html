@@ -3,11 +3,16 @@
 <head>
     <title>Dashboard - Expense Tracker</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
 </head>
 <body>
     <nav class="navbar">
         <a href="/" class="navbar-brand">Expense Tracker</a>
         <div class="navbar-menu">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span class="moon">🌙</span>
+                <span class="sun">☀️</span>
+            </button>
             <a href="/dashboard">Dashboard</a>
             <a href="/expenses">Expenses</a>
             {% if user.role == 'admin' %}
@@ -16,11 +21,20 @@
             <a href="/logout">Logout</a>
         </div>
     </nav>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        }
+    </script>
     
     <div class="container">
         <div class="page-header">
             <h1 class="page-title">Welcome, {{ user.username }}</h1>
-            <span class="category-tag" style="background: var(--light); color: var(--dark);">{{ user.role }}</span>
+            <span class="user-badge {% if user.role == 'admin' %}admin{% endif %}">
+                {% if user.role == 'admin' %}👑{% endif %} {{ user.role }}
+            </span>
         </div>
 
         <div class="card">
@@ -30,13 +44,13 @@
                 <div class="dashboard-grid">
                     <div class="form-group">
                         <label>Expense Description</label>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" id="expense-text" name="text" placeholder="e.g., Lunch at restaurant" required style="flex: 1;">
-                            <button type="button" id="mic-btn" class="btn" style="padding: 10px 15px;" title="Click to speak">
+                        <div class="input-with-mic">
+                            <input type="text" id="expense-text" name="text" placeholder="e.g., Lunch at restaurant" required>
+                            <button type="button" id="mic-btn" class="mic-btn" title="Click to speak">
                                 <span id="mic-icon">🎤</span>
                             </button>
                         </div>
-                        <small id="mic-status" style="color: #666; display: none;">Listening...</small>
+                        <small id="mic-status" style="color: var(--gray); display: none; margin-top: 0.5rem;">Listening...</small>
                     </div>
                     <div class="form-group">
                         <label>Amount (₹)</label>
@@ -49,14 +63,14 @@
             </form>
 
             {% if prediction %}
-            <hr style="margin: 2rem 0;">
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--light);">
             
-            <div class="card" style="background: #f8f9fa;">
-                <div class="card-header">Prediction Result</div>
+            <div class="prediction-result">
+                <div class="card-header" style="font-size: 1.1rem;">Prediction Result</div>
                 <p><strong>Description:</strong> {{ cleaned_text }}</p>
                 <p><strong>Predicted Category:</strong> <span class="category-tag category-{{ prediction.lower().strip() }}">{{ prediction.strip() }}</span></p>
 
-                <form method="POST" style="margin-top: 1rem;">
+                <form method="POST" style="margin-top: 1.5rem;">
                     <input type="hidden" name="description" value="{{ cleaned_text }}">
                     <input type="hidden" name="amount" value="{{ request.form.amount }}">
 
@@ -78,8 +92,8 @@
         </div>
 
         <div class="actions">
-            <a href="/expenses" class="btn btn-primary">View Expenses</a>
-            <a href="/logout" class="btn btn-danger">Logout</a>
+            <a href="/expenses" class="btn btn-primary">📊 View Expenses</a>
+            <a href="/logout" class="btn btn-danger">🚪 Logout</a>
         </div>
     </div>
 
@@ -110,7 +124,7 @@
                         formData.append('audio', audioBlob, 'recording.webm');
 
                         micStatus.textContent = 'Transcribing...';
-                        micStatus.style.display = 'inline';
+                        micStatus.style.display = 'block';
 
                         try {
                             const response = await fetch('/speech-to-text', {
@@ -136,8 +150,9 @@
                     mediaRecorder.start();
                     isRecording = true;
                     micIcon.textContent = '⏹️';
+                    micBtn.classList.add('recording');
                     micStatus.textContent = 'Listening...';
-                    micStatus.style.display = 'inline';
+                    micStatus.style.display = 'block';
                 } catch (err) {
                     alert('Microphone access denied or not available');
                 }
@@ -145,6 +160,7 @@
                 mediaRecorder.stop();
                 isRecording = false;
                 micIcon.textContent = '🎤';
+                micBtn.classList.remove('recording');
             }
         });
     </script>

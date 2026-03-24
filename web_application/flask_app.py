@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from spellchecker import SpellChecker
 import re
 import tempfile
+from collections import defaultdict
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -224,10 +225,16 @@ def users_page():
         )
 
     users = response.json()
-    return render_template("users.html", users=users)
+    
+    user_response = requests.get(
+        f"{FASTAPI_URL}/profile",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    user = user_response.json() if user_response.status_code == 200 else {}
+    
+    return render_template("users.html", users=users, user=user)
 
 # ------------ EXPENSES PAGE ---------------
-from collections import defaultdict
 
 @app.route("/expenses")
 def expenses_page():
@@ -235,6 +242,16 @@ def expenses_page():
     token = session.get("token")
     if not token:
         return redirect(url_for("login"))
+
+    user_response = requests.get(
+        f"{FASTAPI_URL}/profile",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
+    if user_response.status_code != 200:
+        return redirect(url_for("login"))
+    
+    user = user_response.json()
 
     response = requests.get(
         f"{FASTAPI_URL}/expenses/recent?limit=1000",
@@ -259,13 +276,14 @@ def expenses_page():
 
     # ⭐ total for donut center
     total_amount = sum(chart_values)
-
+    
     return render_template(
         "expenses.html",
         expenses=expenses,
         chart_labels=chart_labels,
         chart_values=chart_values,
-        total_amount=total_amount   # ✅ IMPORTANT FIX
+        total_amount=total_amount,
+        user=user
     )
 
 # ------------ DELETE EXPENSE ---------------

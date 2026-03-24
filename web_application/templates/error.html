@@ -3,19 +3,32 @@
 <head>
     <title>Error - Expense Tracker</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
 </head>
 <body>
     <nav class="navbar">
         <a href="/" class="navbar-brand">Expense Tracker</a>
         <div class="navbar-menu">
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span class="moon">🌙</span>
+                <span class="sun">☀️</span>
+            </button>
             <a href="/login">Login</a>
         </div>
     </nav>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        }
+    </script>
 
     <div class="container">
-        <div class="card" style="text-align: center;">
-            <div class="card-header">Error</div>
-            <p>{{ message }}</p>
+        <div class="login-form" style="max-width: 500px; text-align: center;">
+            <div class="empty-state-icon" style="font-size: 4rem;">⚠️</div>
+            <div class="card-header" style="text-align: center; border: none; padding-bottom: 0;">Oops!</div>
+            <p style="color: var(--gray-dark); margin: 1rem 0;">{{ message }}</p>
             <a href="/dashboard" class="btn btn-primary" style="margin-top: 1rem;">Back to Dashboard</a>
         </div>
     </div>
