@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File , Header
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import Column, Integer, String, create_engine, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from datetime import datetime
 import csv
 import io
 
@@ -36,6 +35,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -44,29 +44,32 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="user")
 
+
 class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
-
     category = Column(String, default="Miscellaneous")
-
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-Base.metadata.create_all(bind=engine)
 
+
+Base.metadata.create_all(bind=engine)
 
 # ---------------- SECURITY ----------------
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+
 def verify_password(password: str, hashed: str) -> bool:
     return pwd_context.verify(password, hashed)
+
 
 def create_access_token(data: dict, expires_minutes: int):
     to_encode = data.copy()
@@ -74,29 +77,35 @@ def create_access_token(data: dict, expires_minutes: int):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 # ---------------- SCHEMAS ----------------
 class SignupRequest(BaseModel):
     username: str
     password: str
 
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+
 class UserResponse(BaseModel):
     username: str
     role: str
+
 
 class ExpenseCreate(BaseModel):
     description: str
     amount: int
     category: str = "Miscellaneous"
 
+
 class ExpenseResponse(BaseModel):
     id: int
     description: str
     amount: int
     created_at: datetime
+
 
 # ---------------- DEPENDENCIES ----------------
 def get_db():
@@ -105,6 +114,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -124,24 +134,35 @@ def get_current_user(
 
     return user
 
+
 # ---------------- APP ----------------
 app = FastAPI(title="Auth API")
 
-# ---------------- STARTUP: CREATE DEFAULT ADMIN ----------
+
+# ---------------- STARTUP: CREATE DEFAULT ADMIN ----------------
 @app.on_event("startup")
 def on_startup():
     global engine, SessionLocal
+
     db_path = os.path.join(BASE_DIR, DB_NAME)
+
+    # Dispose engine created at import time to release the file lock
+    engine.dispose()
+
     if os.path.exists(db_path):
-        os.remove(db_path)
-        print(f"Deleted existing database: {db_path}")
-    
+        try:
+            os.remove(db_path)
+            print(f"Deleted existing database: {db_path}")
+        except PermissionError as e:
+            print(f"[WARN] Could not delete DB: {e}. Proceeding with existing file.")
+
+    # Recreate engine and session after deletion
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(bind=engine)
-    
+
     Base.metadata.create_all(bind=engine)
     print("Database tables created")
-    
+
     db = SessionLocal()
     try:
         if ADMIN_USERNAME and ADMIN_PASSWORD:
@@ -161,6 +182,9 @@ def on_startup():
             print("ADMIN_USERNAME or ADMIN_PASSWORD not set in .env")
     finally:
         db.close()
+
+
+# ---------------- SIGNUP ----------------
 @app.post("/signup")
 def signup(data: SignupRequest, db: Session = Depends(get_db)):
     validate_password(data.password)
@@ -179,6 +203,7 @@ def signup(data: SignupRequest, db: Session = Depends(get_db)):
 
     return {"message": "Signup successful"}
 
+
 # ---------------- LOGIN ----------------
 @app.post("/login", response_model=TokenResponse)
 def login(
@@ -189,9 +214,7 @@ def login(
         User.username == form_data.username
     ).first()
 
-    if not user or not verify_password(
-        form_data.password, user.hashed_password
-    ):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
@@ -204,6 +227,7 @@ def login(
 
     return {"access_token": token}
 
+
 # ---------------- PROFILE ----------------
 @app.get("/profile", response_model=UserResponse)
 def profile(user: User = Depends(get_current_user)):
@@ -212,7 +236,8 @@ def profile(user: User = Depends(get_current_user)):
         "role": user.role
     }
 
-#---------------PASSOWRD VALIDATION-------------------
+
+# ---------------- PASSWORD VALIDATION ----------------
 def validate_password(password: str):
     if len(password) < 8:
         raise HTTPException(
@@ -238,7 +263,8 @@ def validate_password(password: str):
             detail="Password must contain at least one number"
         )
 
-#--------------- USER LIST----------------
+
+# ---------------- USER LIST ----------------
 @app.get("/users")
 def get_users(
     db: Session = Depends(get_db),
@@ -258,22 +284,27 @@ def get_users(
         for u in users
     ]
 
-#-------------- Prediction call -------------
+
+# ---------------- PREDICTION ----------------
 class TextInput(BaseModel):
     text: str
+
+
 from ai_intratation.ai_main import predict_text
+
 
 @app.post("/predict")
 def post_predict(data: TextInput):
     return predict_text(data.text)
 
+
+# ---------------- EXPENSES ----------------
 @app.post("/expenses")
 def add_expense(
     data: ExpenseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
     expense = Expense(
         description=data.description.strip().lower(),
         amount=data.amount,
@@ -287,19 +318,13 @@ def add_expense(
 
     return {"message": "Expense added"}
 
+
 @app.get("/expenses/recent")
 def get_recent_expenses(
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Returns recent expenses.
-    Client can request:
-    /expenses/recent?limit=10
-    """
-
-    # ---- safety limit ----
     limit = max(1, min(limit, 1000))
 
     expenses = (
@@ -321,7 +346,8 @@ def get_recent_expenses(
         for e in expenses
     ]
 
-# -------- DELETE ALL EXPENSES (ALL USERS) ----------
+
+# ---------------- DELETE ALL EXPENSES (ADMIN) ----------------
 @app.delete("/expenses/delete-all")
 def delete_all_expenses(
     db: Session = Depends(get_db),
@@ -336,14 +362,13 @@ def delete_all_expenses(
     return {"message": f"{deleted} expenses deleted from all users"}
 
 
-# -------- DELETE EXPENSE ----------
+# ---------------- DELETE EXPENSE ----------------
 @app.delete("/expenses/{expense_id}")
 def delete_expense(
     expense_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-
     expense = (
         db.query(Expense)
         .filter(
@@ -361,67 +386,19 @@ def delete_expense(
 
     return {"message": "Expense removed"}
 
-# ------------ EXPORT CSV ---------------
-@app.route("/expenses/export")
-def export_expenses():
 
-    token = session.get("token")
-    if not token:
-        return redirect(url_for("login"))
-
-    # get ALL expenses
-    response = requests.get(
-        f"{FASTAPI_URL}/expenses/recent?limit=1000",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-
-    if response.status_code != 200:
-        return redirect(url_for("expenses_page"))
-
-    expenses = response.json()
-
-    # create CSV in memory
-    output = StringIO()
-    writer = csv.writer(output)
-
-    # header
-    writer.writerow(["ID", "Description", "Amount", "Category", "Date"])
-
-    # rows
-    for e in expenses:
-        writer.writerow([
-            e["id"],
-            e["description"],
-            e["amount"],
-            e.get("category", ""),
-            e["created_at"]
-        ])
-
-    output.seek(0)
-
-    return Response(
-        output,
-        mimetype="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=expenses.csv"
-        },
-    )
-
-# -------- IMPORT EXPENSES FROM CSV ----------
+# ---------------- IMPORT EXPENSES FROM CSV ----------------
 @app.post("/expenses/import")
 async def import_expenses(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-
-    # check extension
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files allowed")
 
-    # read file
     content = await file.read()
-    decoded = content.decode("utf-8-sig")   # handles Excel CSV
+    decoded = content.decode("utf-8-sig")  # handles Excel CSV
 
     reader = csv.DictReader(io.StringIO(decoded))
 
@@ -430,21 +407,19 @@ async def import_expenses(
 
     for row in reader:
         try:
-            # remove header spaces + normalize keys
             row = {k.strip(): v.strip() if v else "" for k, v in row.items()}
 
             description = row.get("Description")
             amount = row.get("Amount")
             category = row.get("Category") or "Miscellaneous"
 
-            # validate required fields
             if not description or not amount:
                 skipped_rows += 1
                 continue
 
             expense = Expense(
                 description=description.lower(),
-                amount=int(float(amount)),  # handles 120.00 also
+                amount=int(float(amount)),
                 category=category,
                 user_id=current_user.id,
                 created_at=datetime.utcnow()
@@ -465,14 +440,14 @@ async def import_expenses(
         "skipped_rows": skipped_rows
     }
 
+
+# ---------------- IMPORT DEFAULT EXPENSES (ADMIN) ----------------
 @app.post("/expenses/import-default")
 async def import_default_expenses(
     file: UploadFile = File(...),
     admin_key: str = Header(None),
     db: Session = Depends(get_db),
 ):
-
-    # ---- SECURITY CHECK ----
     if admin_key != ADMIN_IMPORT_KEY:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
@@ -486,7 +461,6 @@ async def import_default_expenses(
     imported = 0
 
     for row in reader:
-
         row = {k.strip(): v.strip() for k, v in row.items()}
 
         description = row.get("Description")
@@ -496,7 +470,6 @@ async def import_default_expenses(
         if not description or not amount:
             continue
 
-        # ⭐ add expense to EVERY USER
         for user in users:
             expense = Expense(
                 description=description.lower(),
@@ -505,7 +478,6 @@ async def import_default_expenses(
                 user_id=user.id,
                 created_at=datetime.utcnow()
             )
-
             db.add(expense)
             imported += 1
 
@@ -515,4 +487,3 @@ async def import_default_expenses(
         "message": "Default expenses added to all users",
         "inserted_records": imported
     }
-
